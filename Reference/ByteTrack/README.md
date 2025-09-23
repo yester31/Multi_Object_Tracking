@@ -3,7 +3,7 @@
 
 1. set up a virtual environment.
     ```
-    https://github.com/FoundationVision/ByteTrack.git
+    git clone https://github.com/FoundationVision/ByteTrack.git
     cd ByteTrack
     conda create -n btrack -y python=3.11
     conda activate btrack
