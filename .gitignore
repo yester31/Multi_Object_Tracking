@@ -1,7 +1,13 @@
 results/
 onnx/
 engine/
-
+build/
+backup/
+*.pt
+*.onnx
+*.engine
+.cache
+demo.mp4
 
 # Prerequisites
 *.d
