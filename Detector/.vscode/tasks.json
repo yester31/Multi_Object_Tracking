@@ -1,0 +1,56 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: g++ build active file",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-Wno-deprecated-declarations",
+                "-g",
+                "-std=c++17",
+                // Include paths
+                "-I/usr/local/cuda/include",
+                "-I/usr/local/include/opencv4",
+                "-I/usr/include/x86_64-linux-gnu",
+                "-I${workspaceFolder}/utils",
+                "-I${workspaceFolder}/opti_trt/include",
+                "-L/usr/local/cuda/lib64",
+                "-L/usr/local/lib",
+                "-L/usr/lib/x86_64-linux-gnu",
+                // Source & output
+                "${file}",
+                "${workspaceFolder}/opti_trt/src/**",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
+                // CUDA & cuDNN
+                "-lcudart",
+                //"-lcuda",
+                "-lcublas",
+                "-lcudnn",
+                // TensorRT
+                "-lnvinfer",
+                "-lnvinfer_plugin",
+                "-lnvonnxparser",
+                // OpenCV
+                "-lopencv_core",
+                "-lopencv_imgproc",
+                "-lopencv_highgui",
+                "-lopencv_imgcodecs",
+                "-lopencv_videoio"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Build TensorRT + CUDA + OpenCV"
+        }
+    ],
+    "version": "2.0.0"
+}
