@@ -1,5 +1,6 @@
 #include "BYTETracker.h" 
-#include "yolox_opti_trt.hpp"
+#include "yolo_opti_trt.hpp"
+#include "yolox_demo.hpp"
 #include "utils.hpp"
 
 int main() {
@@ -22,7 +23,7 @@ int main() {
     std::filesystem::path engine_dir_path = CUR_DIR / "../Detector/engine" ;// engine directory path (engine file will be generated in this location)
     std::filesystem::path weight_file_path = CUR_DIR / "../Detector/onnx/yolox-s_640x640_sim_w_nms.onnx" ; // weight file path
 
-    yolox_opti_trt yolox_trt = yolox_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
+    yolo_opti_trt yolox_trt = yolo_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
 
     int INPUT_SIZE = INPUT_H * INPUT_W * INPUT_C;
     int OUTPUT_SIZE = (1 + 6 * 300);
