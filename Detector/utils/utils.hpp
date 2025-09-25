@@ -1,7 +1,10 @@
 
+#pragma once
 #include <sys/stat.h>
 #include <dirent.h>
 #include <opencv2/opencv.hpp>
+#include <iomanip> // std::fixed, std::setprecision
+#include <sstream> // std::ostringstream
 
 std::vector<std::vector<int>> COLOR_TABLE = {
     {0,   114, 189},    {217,  83,  25},    {237, 176,  32},    {126,  47, 142},    {119, 172,  48},    { 77, 190, 238},
@@ -30,6 +33,15 @@ std::vector<std::string> COCO_LABELS = {
     "potted plant", "bed", "dining table", "toilet", "TV", "laptop", "mouse", "remote", "keyboard", "cell phone",
     "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
     "hair drier", "toothbrush"
+};
+
+std::vector<std::string>  VisDrone_LABELS = {
+    "regions", "pedestrian", "people", "bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", 
+    "bus", "motor", "others"
+};
+
+std::vector<std::string>  AITOD_LABELS = {
+    "airplane", "bridge", "storage tank", "ship", "swimming pool", "vehicle", "person", "wind mill"
 };
 
 void gen_dir(std::string engine_dir_path)
@@ -83,56 +95,3 @@ void load_images_from_folder(std::vector<std::string> &file_names, const std::st
     closedir(dir);
 }
 
-// Do data pre-processing
-void pre_proc_yolox_0(    
-    std::vector<uint8_t> &inputs0,  // output uint8_t data
-    float &ratio,     // output ratio data
-    cv::Mat &ori_img,               // input image
-    int b_idx, int INPUT_SIZE, int INPUT_H, int INPUT_W)
-{
-    int unpad_w = ratio * ori_img.cols;
-    int unpad_h = ratio * ori_img.rows;
-
-    // resize
-    cv::Mat resized_img(unpad_h, unpad_w, CV_8UC3);
-    cv::resize(ori_img, resized_img, resized_img.size());
-
-    // pad
-    cv::Mat padded_img(INPUT_H, INPUT_W, CV_8UC3, cv::Scalar(114, 114, 114));
-    resized_img.copyTo(padded_img(cv::Rect(0, 0, resized_img.cols, resized_img.rows)));
-    
-    memcpy(inputs0.data() + b_idx * INPUT_SIZE, padded_img.data, INPUT_SIZE);
-}
-
-void pre_proc_yolox_1(
-    std::vector<float> &output,     // output float data
-    std::vector<uint8_t> &input,    // input uint8_t data
-    int BatchSize, int channels, int height, int width)
-{
-    /*
-        INPUT  = BGR[NHWC](0, 255)
-        OUTPUT = BGR[NCHW]
-        - Shuffle form HWC to CHW
-    */
-    int offset = channels * height * width;
-    int b_off, c_off, h_off, h_off_o;
-    for (int b = 0; b < BatchSize; b++)
-    {
-        b_off = b * offset;
-        for (int c = 0; c < channels; c++)
-        {
-            c_off = c * height * width + b_off;
-            for (int h = 0; h < height; h++)
-            {
-                h_off = h * width + c_off;
-                h_off_o = h * width * channels + b_off;
-                for (int w = 0; w < width; w++)
-                {
-                    int dstIdx = h_off + w;
-                    int srcIdx = h_off_o + w * channels;
-                    output[dstIdx] = (static_cast<const float>(input[srcIdx]));
-                }
-            }
-        }
-    }
-};

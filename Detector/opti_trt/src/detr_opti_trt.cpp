@@ -1,16 +1,16 @@
-#include "yolox_opti_trt.hpp"
+#include "detr_opti_trt.hpp"
 
-yolox_opti_trt::yolox_opti_trt(
+detr_opti_trt::detr_opti_trt(
     int batch_size_, int input_h_, int input_w_, int input_c_, int class_count_, int precision_mode_, bool serialize_, int gpu_device_,
     std::string engine_dir_path_, std::string engine_file_name_, std::string weight_file_path_)
     : base_opti_trt(batch_size_, input_h_, input_w_, input_c_, class_count_, precision_mode_, serialize_, gpu_device_, engine_dir_path_, engine_file_name_, weight_file_path_)
       
 {
-    initLibNvInferPlugins(&trtLogger, "");
+    // initLibNvInferPlugins(&trtLogger, "");
 
     // 1) generate main logger
     std::cout << ("==================================================================") << std::endl;
-    std::cout << ("      Starting the work to accelerate inference of the YOLOX      ") << std::endl;
+    std::cout << ("      Starting the work to accelerate inference of the DETR      ") << std::endl;
     std::cout << ("==================================================================") << std::endl;
 
     // 3) check gpu device
@@ -146,16 +146,16 @@ yolox_opti_trt::yolox_opti_trt(
     buffers.resize(5);
     INPUT_SIZE0 = input_c * input_h * input_w;
     CHECK(cudaMalloc(&buffers[0], batch_size * INPUT_SIZE0 * sizeof(float)));
-    CHECK(cudaMalloc(&buffers[1], batch_size * OUTPUT_SIZE0 * sizeof(int)));
-    CHECK(cudaMalloc(&buffers[2], batch_size * OUTPUT_SIZE1 * sizeof(float)));
-    CHECK(cudaMalloc(&buffers[3], batch_size * OUTPUT_SIZE2 * sizeof(float)));
-    CHECK(cudaMalloc(&buffers[4], batch_size * OUTPUT_SIZE3 * sizeof(int)));
+    CHECK(cudaMalloc(&buffers[1], batch_size * INPUT_SIZE1 * sizeof(int64_t)));
+    CHECK(cudaMalloc(&buffers[2], batch_size * OUTPUT_SIZE0 * sizeof(int64_t)));
+    CHECK(cudaMalloc(&buffers[3], batch_size * OUTPUT_SIZE1 * sizeof(float)));
+    CHECK(cudaMalloc(&buffers[4], batch_size * OUTPUT_SIZE2 * sizeof(float)));
 
     context->setTensorAddress(INPUT_NAME0.c_str(), buffers[0]);
-    context->setTensorAddress(OUTPUT_NAME0.c_str(), buffers[1]);
-    context->setTensorAddress(OUTPUT_NAME1.c_str(), buffers[2]);
-    context->setTensorAddress(OUTPUT_NAME2.c_str(), buffers[3]);
-    context->setTensorAddress(OUTPUT_NAME3.c_str(), buffers[4]);
+    context->setTensorAddress(INPUT_NAME1.c_str(), buffers[1]);
+    context->setTensorAddress(OUTPUT_NAME0.c_str(), buffers[2]);
+    context->setTensorAddress(OUTPUT_NAME1.c_str(), buffers[3]);
+    context->setTensorAddress(OUTPUT_NAME2.c_str(), buffers[4]);
 
     // 12) warm-up
     uint64_t iter_count = 30; // the number of test iterations
@@ -170,60 +170,64 @@ yolox_opti_trt::yolox_opti_trt(
     output_post0.resize(batch_size * OUTPUT_SIZE0);
     output_post1.resize(batch_size * OUTPUT_SIZE1);
     output_post2.resize(batch_size * OUTPUT_SIZE2);
-    output_post3.resize(batch_size * OUTPUT_SIZE3);
 
     trtLogger.log(Logger::Severity::kINFO, "inference preparation complete");
 }
 
-yolox_opti_trt::~yolox_opti_trt() {}
+detr_opti_trt::~detr_opti_trt() {}
 
 // feed input data & run preprocess
-void yolox_opti_trt::input_data(const void* inputs)
+void detr_opti_trt::input_data(const void* inputs)
 {
     // cpu -> gpu memory copy
-    CHECK(cudaMemcpyAsync(static_cast<float*>(buffers[0]), static_cast<const float*>(inputs), batch_size * INPUT_SIZE0 * sizeof(float), cudaMemcpyHostToDevice, stream));
+    for (int b_idx = 0; b_idx < batch_size; b_idx++)
+    {
+        const float* input_ptr1 = static_cast<const float*>(inputs) + b_idx * (INPUT_SIZE0 + INPUT_SIZE1);
+        CHECK(cudaMemcpyAsync(static_cast<float*>(buffers[0]) + b_idx * INPUT_SIZE0, input_ptr1, INPUT_SIZE0 * sizeof(float), cudaMemcpyHostToDevice, stream));
+        const int64_t* input_ptr2 = reinterpret_cast<const int64_t*>(reinterpret_cast<const uint8_t*>(input_ptr1) + INPUT_SIZE0 * sizeof(float));
+        CHECK(cudaMemcpyAsync(static_cast<int64_t*>(buffers[1]) + b_idx * INPUT_SIZE1, input_ptr2, INPUT_SIZE1 * sizeof(int64_t), cudaMemcpyHostToDevice, stream));
+    }
+
     // fromfile(output_pre, "../../../valid_tensor/input_py");
 }
 
 // inference
-void yolox_opti_trt::run_model()
+void detr_opti_trt::run_model()
 {
     context->enqueueV3(stream);
 }
 
 // get output result
-void yolox_opti_trt::output_data(void* outputs)
+void detr_opti_trt::output_data(void* outputs)
 {
-    CHECK(cudaMemcpyAsync(output_post0.data(), buffers[1], batch_size * OUTPUT_SIZE0 * sizeof(int), cudaMemcpyDeviceToHost, stream));
-    CHECK(cudaMemcpyAsync(output_post1.data(), buffers[2], batch_size * OUTPUT_SIZE1 * sizeof(float), cudaMemcpyDeviceToHost, stream));
-    CHECK(cudaMemcpyAsync(output_post2.data(), buffers[3], batch_size * OUTPUT_SIZE2 * sizeof(float), cudaMemcpyDeviceToHost, stream));
-    CHECK(cudaMemcpyAsync(output_post3.data(), buffers[4], batch_size * OUTPUT_SIZE3 * sizeof(int), cudaMemcpyDeviceToHost, stream));
+    CHECK(cudaMemcpyAsync(output_post0.data(), buffers[2], batch_size * OUTPUT_SIZE0 * sizeof(int64_t), cudaMemcpyDeviceToHost, stream));
+    CHECK(cudaMemcpyAsync(output_post1.data(), buffers[3], batch_size * OUTPUT_SIZE1 * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    CHECK(cudaMemcpyAsync(output_post2.data(), buffers[4], batch_size * OUTPUT_SIZE2 * sizeof(float), cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
 
-    // b * (1 + 300 * 6)
+    // b * (300 * 6)
+    int class_offset, box_offset, score_offset, output_offset;
     for (int b_idx = 0; b_idx < batch_size; b_idx++)
-    {
-        ((float*)outputs)[b_idx * (1 + (OUTPUT_SIZE1+OUTPUT_SIZE2+OUTPUT_SIZE3))] = static_cast<float>(output_post0[b_idx]); // num_dets
-        for (int d_idx = 0; d_idx < output_post0[b_idx]; d_idx++){
-            int box_offset = b_idx * OUTPUT_SIZE1 + d_idx * 4;
-            int score_offset = b_idx * OUTPUT_SIZE2 + d_idx;   
-            int class_offset = b_idx * OUTPUT_SIZE3 + d_idx;
-            int output_offset = b_idx * (1 + (OUTPUT_SIZE1+OUTPUT_SIZE2+OUTPUT_SIZE3)) + 1 + d_idx * 6;
-            ((float*)outputs)[output_offset + 0] = output_post1[box_offset + 0]; // bbox x0
-            ((float*)outputs)[output_offset + 1] = output_post1[box_offset + 1]; // bbox y0
-            ((float*)outputs)[output_offset + 2] = output_post1[box_offset + 2]; // bbox x1
-            ((float*)outputs)[output_offset + 3] = output_post1[box_offset + 3]; // bbox y1
-            ((float*)outputs)[output_offset + 4] = output_post2[score_offset]; // score
-            ((float*)outputs)[output_offset + 5] = static_cast<float>(output_post3[class_offset]); // class id
+    {        
+        class_offset = b_idx * OUTPUT_SIZE0;
+        box_offset = b_idx * OUTPUT_SIZE1;   
+        score_offset = b_idx * OUTPUT_SIZE2;
+        output_offset = b_idx * (OUTPUT_SIZE0 + OUTPUT_SIZE1 + OUTPUT_SIZE2);
+        for (int d_idx = 0; d_idx < OUTPUT_SIZE0; d_idx++){
+            ((float*)outputs)[output_offset + d_idx * 6]     = output_post1[box_offset + d_idx * 4]; // bbox x0
+            ((float*)outputs)[output_offset + d_idx * 6 + 1] = output_post1[box_offset + d_idx * 4 + 1]; // bbox y0
+            ((float*)outputs)[output_offset + d_idx * 6 + 2] = output_post1[box_offset + d_idx * 4 + 2]; // bbox x1
+            ((float*)outputs)[output_offset + d_idx * 6 + 3] = output_post1[box_offset + d_idx * 4 + 3]; // bbox y1
+            ((float*)outputs)[output_offset + d_idx * 6 + 4] = output_post2[score_offset + d_idx]; // score
+            ((float*)outputs)[output_offset + d_idx * 6 + 5] = static_cast<float>(output_post0[class_offset + d_idx]); // class id
         }
     }
     output_post0.clear();
     output_post1.clear();
     output_post2.clear();
-    output_post3.clear();
 }
 // Creat the engine using onnx.
-void yolox_opti_trt::createEngineFromOnnx(std::unique_ptr<nvinfer1::IBuilder>& builder, std::unique_ptr<nvinfer1::IBuilderConfig>& config)
+void detr_opti_trt::createEngineFromOnnx(std::unique_ptr<nvinfer1::IBuilder>& builder, std::unique_ptr<nvinfer1::IBuilderConfig>& config)
 {
     trtLogger.log(Logger::Severity::kINFO,"make network start");
 
@@ -250,7 +254,7 @@ void yolox_opti_trt::createEngineFromOnnx(std::unique_ptr<nvinfer1::IBuilder>& b
     }
 
     // Set memory pool limits
-    config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, 1ULL << 30); // 1GB
+    config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, 2ULL << 30); // 1GB
     config->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kTACTIC_SHARED_MEMORY, 48 << 10);
 
     if (precision_mode == 16)

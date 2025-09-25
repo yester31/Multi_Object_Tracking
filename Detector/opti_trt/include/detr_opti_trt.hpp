@@ -5,12 +5,12 @@
 #include <NvOnnxParser.h>
 #include <NvInferPlugin.h>
 
-class yolox_opti_trt : public base_opti_trt
+class detr_opti_trt : public base_opti_trt
 {
 public:
     /**
-     * @brief yolox model inference constructor
-     * @details yolox_opti_trt class constructor and generate engine using ONNX or load engine file and inference.
+     * @brief detr model inference constructor
+     * @details detr_opti_trt class constructor and generate engine using ONNX or load engine file and inference.
      * @param[in] batch_size_        input image batch size
      * @param[in] input_h_           input image height
      * @param[in] input_w_           input image width
@@ -25,7 +25,7 @@ public:
      * @return
      */
 
-    yolox_opti_trt(
+    detr_opti_trt(
         int batch_size_, 
         int input_h_, 
         int input_w_, 
@@ -69,26 +69,25 @@ public:
      * @details delete device memory space
      */
 
-    ~yolox_opti_trt();
+    ~detr_opti_trt();
 
 private:
     // Creat the engine using onnx.
     void createEngineFromOnnx(std::unique_ptr<nvinfer1::IBuilder>& builder, std::unique_ptr<nvinfer1::IBuilderConfig>& config);
 
-    std::vector<int> output_post0;      //!< output0 for cpu 
+    std::vector<int64_t> output_post0;    //!< output0 for cpu 
     std::vector<float> output_post1;    //!< output1 for cpu 
-    std::vector<float> output_post2;    //!< output2 for cpu 
-    std::vector<int> output_post3;      //!< output3 for cpu 
+    std::vector<float> output_post2;      //!< output2 for cpu 
 
     int INPUT_SIZE0;
-    int OUTPUT_SIZE0 = 1;
+    int INPUT_SIZE1 = 2;
+    int OUTPUT_SIZE0 = 300;
     int OUTPUT_SIZE1 = 300 * 4;
     int OUTPUT_SIZE2 = 300;
-    int OUTPUT_SIZE3 = 300;
 
     std::string INPUT_NAME0 = "input";
-    std::string OUTPUT_NAME0 = "num_dets";
-    std::string OUTPUT_NAME1 = "det_boxes";
-    std::string OUTPUT_NAME2 = "det_scores";
-    std::string OUTPUT_NAME3 = "det_classes";
+    std::string INPUT_NAME1 = "ori_size";
+    std::string OUTPUT_NAME0 = "labels";
+    std::string OUTPUT_NAME1 = "boxes";
+    std::string OUTPUT_NAME2 = "scores";
 };

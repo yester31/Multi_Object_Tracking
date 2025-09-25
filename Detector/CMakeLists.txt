@@ -31,7 +31,7 @@ include_directories(
 file(GLOB OPTI_SOURCES ${PROJECT_SOURCE_DIR}/opti_trt/src/*.cpp)
 
 set(SOURCES
-    ${PROJECT_SOURCE_DIR}/yolox_demo.cpp
+    ${PROJECT_SOURCE_DIR}/main.cpp
     ${OPTI_SOURCES}
 )
 
