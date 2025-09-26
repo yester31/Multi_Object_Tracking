@@ -17,6 +17,7 @@
                 "-I${workspaceFolder}/../Detector/utils",
                 "-I${workspaceFolder}/../Detector/opti_trt/include",
                 "-I${workspaceFolder}/bytetrack/include",
+                "-I${workspaceFolder}/demos",
                 "-L/usr/local/cuda/lib64",
                 "-L/usr/local/lib",
                 "-L/usr/lib/x86_64-linux-gnu",

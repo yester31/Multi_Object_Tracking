@@ -12,7 +12,8 @@
                 "${workspaceFolder}/../Detector/opti_trt/include",
                 "${workspaceFolder}/../Detector/opti_trt/src",
                 "${workspaceFolder}/bytetrack/include",
-                "${workspaceFolder}/bytetrack/src"
+                "${workspaceFolder}/bytetrack/src",
+                "${workspaceFolder}/demos"
 
             ],
             "defines": [],
