@@ -1,12 +1,12 @@
 #include "BYTETracker.h" 
-#include "detr_opti_trt.hpp"
+#include "yolo_opti_trt.hpp"
 #include "utils.hpp"
 
-void bytetrack_dfine_demo() {
+void bytetrack_yolo12_demo() {
     std::filesystem::path CUR_DIR = std::filesystem::current_path();
     std::cout << "Current path: " << CUR_DIR << std::endl;
     if (CUR_DIR.filename() == "build") {
-        CUR_DIR = CUR_DIR.parent_path();
+        CUR_DIR = CUR_DIR.parent_path(); 
     }
 
     // 1) parameter setting
@@ -18,16 +18,17 @@ void bytetrack_dfine_demo() {
     const int precision_mode{ 16 }; // fp32 mode : 32, fp16 mode : 16
     int gpu_device{ 0 };            // gpu device index (default = 0)
     bool serialize{ false };        // force serialize flag (IF true, recreate the engine file unconditionally)
-    std::string engine_file_name{ "dfine_s_obj2coco" };  // engine file name (engine file will be generated uisng this name)
+    std::string engine_file_name{ "yolo12n" };  // engine file name (engine file will be generated uisng this name)
     std::filesystem::path engine_dir_path = CUR_DIR / "../Detector/engine" ;// engine directory path (engine file will be generated in this location)
-    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/D-FINE/onnx/dfine_s_obj2coco_640x640_sim.onnx" ; // weight file path
+    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/Yolo12/onnx/yolo12n_640x640_sim_w_nms.onnx" ; // weight file path
 
-    detr_opti_trt dfine_trt = detr_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
+    yolo_opti_trt yolo12_trt = yolo_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
 
     int INPUT_SIZE = INPUT_H * INPUT_W * INPUT_C;
-    int OUTPUT_SIZE = (6 * 300);
-    std::vector<float> inputs(BATCH_SIZE * (INPUT_SIZE + 2 * 2)); // [BATCH_SIZE, input(640, 640, 3), ori_size(2(int64_t))]
-    std::vector<float> outputs(BATCH_SIZE * OUTPUT_SIZE);   // [BATCH_SIZE, (boxes[x,y,w,h], scores, labels) * 300]
+    int OUTPUT_SIZE = (1 + 6 * 300);
+    std::vector<uint8_t> inputs0(BATCH_SIZE * INPUT_SIZE);  // [BATCH_SIZE, 640, 640, 3]
+    std::vector<float> inputs(BATCH_SIZE * INPUT_SIZE);     // [BATCH_SIZE, 640, 640, 3]
+    std::vector<float> outputs(BATCH_SIZE * OUTPUT_SIZE);   // [BATCH_SIZE, (the number of detection,  {bbox[x,y,w,h], score, cls_id} * 300)]
 
     std::filesystem::path video_file_path = CUR_DIR / "../data/video/palace.mp4"; // video file path
     std::string input_video_path = video_file_path.string();
@@ -43,7 +44,7 @@ void bytetrack_dfine_demo() {
 
     std::filesystem::path save_dir_path = CUR_DIR / "results" ; // save file directory path
     gen_dir(save_dir_path.string());
-    std::filesystem::path save_file_path = save_dir_path / "bytetrack_dfine_demo.mp4" ;
+    std::filesystem::path save_file_path = save_dir_path / "bytetrack_yolo12_demo.mp4" ;
     VideoWriter writer(save_file_path.string(), VideoWriter::fourcc('m', 'p', '4', 'v'), fps, Size(img_w, img_h));
 
     cv::Mat img;
@@ -51,6 +52,7 @@ void bytetrack_dfine_demo() {
     int num_frames = 0;
     int total_ms = 0;
     float ratio = std::min(static_cast<float>(INPUT_W) / (img_w), static_cast<float>(INPUT_H )/ (img_h));
+
 	while (true)
     {
         if(!cap.read(img))
@@ -63,41 +65,41 @@ void bytetrack_dfine_demo() {
 		if (img.empty())
 			break;
 
-        pre_proc_detr(inputs, img, 0, INPUT_SIZE, INPUT_H, INPUT_W);
-        std::vector<int64_t> ori_size{static_cast<int64_t>(img.cols), static_cast<int64_t>(img.rows)};
-        memcpy(inputs.data() + INPUT_SIZE, ori_size.data(), 2 * sizeof(int64_t)); 
+        std::vector<float> pad_tops; // temporary ratios
+        std::vector<float> pad_lefts; // temporary ratios
+        pre_proc_yolo(inputs, img, ratio, pad_tops, pad_lefts, 0, INPUT_SIZE, INPUT_H, INPUT_W);
 
         // run inference
         auto start = chrono::system_clock::now();
-        dfine_trt.input_data(inputs.data());
-        dfine_trt.run_model();
-        dfine_trt.output_data(outputs.data());
-        
+        yolo12_trt.input_data(inputs.data());
+        yolo12_trt.run_model();
+        yolo12_trt.output_data(outputs.data());
+
         vector<Object> objects;
         int x, y, x1, y1;
         float conf;
         int label;
-        float* detection_ptr = outputs.data();
-        float conf_thre = 0.1;
-        for (int d_idx = 0; d_idx < 300; d_idx++)
+        int num_dets = static_cast<int>(outputs[0]);  // number of detections
+        float* detection_ptr = outputs.data() + 1;
+        float conf_thre = 0.5;
+        objects.resize(num_dets);
+        for (int d_idx = 0; d_idx < num_dets; d_idx++)
         {   
             int g_idx = d_idx * 6;
             conf = detection_ptr[g_idx + 4];
             if (conf < conf_thre) continue;
             label = static_cast<int>(detection_ptr[g_idx + 5]);
             if (label != 0) continue;
-            x = static_cast<int>(detection_ptr[g_idx]);
-            y = static_cast<int>(detection_ptr[g_idx + 1]);
-            x1 = static_cast<int>(detection_ptr[g_idx + 2]);
-            y1 = static_cast<int>(detection_ptr[g_idx + 3]);
-            Object object;
-            object.rect.x = x;
-            object.rect.y = y;
-            object.rect.width = x1 - x;
-            object.rect.height = y1 - y;
-            object.label = label;
-            object.prob = conf;
-            objects.push_back(object);  
+            x = static_cast<int>((detection_ptr[g_idx] - pad_lefts[0]) / ratio);
+            y = static_cast<int>((detection_ptr[g_idx + 1] - pad_tops[0]) / ratio) ;
+            x1 = static_cast<int>((detection_ptr[g_idx + 2] - pad_lefts[0]) / ratio);
+            y1 = static_cast<int>((detection_ptr[g_idx + 3] - pad_tops[0]) / ratio);
+            objects[d_idx].rect.x = x;
+            objects[d_idx].rect.y = y;
+            objects[d_idx].rect.width = x1 - x;
+            objects[d_idx].rect.height = y1 - y;
+            objects[d_idx].label = label;
+            objects[d_idx].prob = conf;
         }
 
         vector<STrack> output_stracks = tracker.update(objects);

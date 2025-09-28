@@ -2,7 +2,7 @@
 #include "detr_opti_trt.hpp"
 #include "utils.hpp"
 
-void bytetrack_dfine_demo() {
+void bytetrack_rt_detr_demo() {
     std::filesystem::path CUR_DIR = std::filesystem::current_path();
     std::cout << "Current path: " << CUR_DIR << std::endl;
     if (CUR_DIR.filename() == "build") {
@@ -18,11 +18,11 @@ void bytetrack_dfine_demo() {
     const int precision_mode{ 16 }; // fp32 mode : 32, fp16 mode : 16
     int gpu_device{ 0 };            // gpu device index (default = 0)
     bool serialize{ false };        // force serialize flag (IF true, recreate the engine file unconditionally)
-    std::string engine_file_name{ "dfine_s_obj2coco" };  // engine file name (engine file will be generated uisng this name)
+    std::string engine_file_name{ "rtdetrv2_r18vd" };  // engine file name (engine file will be generated uisng this name)
     std::filesystem::path engine_dir_path = CUR_DIR / "../Detector/engine" ;// engine directory path (engine file will be generated in this location)
-    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/D-FINE/onnx/dfine_s_obj2coco_640x640_sim.onnx" ; // weight file path
+    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/RT-DETR/onnx/rtdetrv2_r18vd_640x640_sim.onnx" ; // weight file path
 
-    detr_opti_trt dfine_trt = detr_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
+    detr_opti_trt rt_detr_trt = detr_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
 
     int INPUT_SIZE = INPUT_H * INPUT_W * INPUT_C;
     int OUTPUT_SIZE = (6 * 300);
@@ -43,7 +43,7 @@ void bytetrack_dfine_demo() {
 
     std::filesystem::path save_dir_path = CUR_DIR / "results" ; // save file directory path
     gen_dir(save_dir_path.string());
-    std::filesystem::path save_file_path = save_dir_path / "bytetrack_dfine_demo.mp4" ;
+    std::filesystem::path save_file_path = save_dir_path / "bytetrack_rt_detr_demo.mp4" ;
     VideoWriter writer(save_file_path.string(), VideoWriter::fourcc('m', 'p', '4', 'v'), fps, Size(img_w, img_h));
 
     cv::Mat img;
@@ -69,9 +69,9 @@ void bytetrack_dfine_demo() {
 
         // run inference
         auto start = chrono::system_clock::now();
-        dfine_trt.input_data(inputs.data());
-        dfine_trt.run_model();
-        dfine_trt.output_data(outputs.data());
+        rt_detr_trt.input_data(inputs.data());
+        rt_detr_trt.run_model();
+        rt_detr_trt.output_data(outputs.data());
         
         vector<Object> objects;
         int x, y, x1, y1;

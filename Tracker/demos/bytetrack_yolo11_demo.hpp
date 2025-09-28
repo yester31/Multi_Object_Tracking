@@ -1,5 +1,6 @@
 #include "BYTETracker.h" 
-#include "yolo11_demo.hpp"
+#include "yolo_opti_trt.hpp"
+#include "utils.hpp"
 
 void bytetrack_yolo11_demo() {
     std::filesystem::path CUR_DIR = std::filesystem::current_path();
@@ -66,7 +67,7 @@ void bytetrack_yolo11_demo() {
 
         std::vector<float> pad_tops; // temporary ratios
         std::vector<float> pad_lefts; // temporary ratios
-        pre_proc_yolo11(inputs, ratio, pad_tops, pad_lefts, img, 0, INPUT_SIZE, INPUT_H, INPUT_W);
+        pre_proc_yolo(inputs, img, ratio, pad_tops, pad_lefts, 0, INPUT_SIZE, INPUT_H, INPUT_W);
 
         // run inference
         auto start = chrono::system_clock::now();
@@ -77,6 +78,7 @@ void bytetrack_yolo11_demo() {
         vector<Object> objects;
         int x, y, x1, y1;
         float conf;
+        int label;
         int num_dets = static_cast<int>(outputs[0]);  // number of detections
         float* detection_ptr = outputs.data() + 1;
         float conf_thre = 0.5;
@@ -86,6 +88,8 @@ void bytetrack_yolo11_demo() {
             int g_idx = d_idx * 6;
             conf = detection_ptr[g_idx + 4];
             if (conf < conf_thre) continue;
+            label = static_cast<int>(detection_ptr[g_idx + 5]);
+            if (label != 0) continue;
             x = static_cast<int>((detection_ptr[g_idx] - pad_lefts[0]) / ratio);
             y = static_cast<int>((detection_ptr[g_idx + 1] - pad_tops[0]) / ratio) ;
             x1 = static_cast<int>((detection_ptr[g_idx + 2] - pad_lefts[0]) / ratio);
@@ -94,7 +98,7 @@ void bytetrack_yolo11_demo() {
             objects[d_idx].rect.y = y;
             objects[d_idx].rect.width = x1 - x;
             objects[d_idx].rect.height = y1 - y;
-            objects[d_idx].label = static_cast<int>(detection_ptr[g_idx + 5]);
+            objects[d_idx].label = label;
             objects[d_idx].prob = conf;
         }
 
@@ -130,7 +134,7 @@ void bytetrack_yolo11_demo() {
             static_cast<int>(output_stracks.size())), Point(0, 30), 0, 0.6, Scalar(0, 0, 255), 2, LINE_AA);
         writer.write(img);
 
-        cv::imshow("test", img);
+        cv::imshow(engine_file_name, img);
         char c = waitKey(1);
         if (c > 0)
         {
