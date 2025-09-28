@@ -3,7 +3,7 @@
 #include <chrono>
 #include <cmath>
 
-void dfine_demo()
+void rf_detr_demo()
 {
     std::filesystem::path CUR_DIR = std::filesystem::current_path();
     std::cout << "Current path: " << CUR_DIR << std::endl;
@@ -13,18 +13,18 @@ void dfine_demo()
 
     // 1) parameter setting
     const int BATCH_SIZE{ 1 };
-    const int INPUT_H{ 640 };
-    const int INPUT_W{ 640 };
+    const int INPUT_H{ 384 };
+    const int INPUT_W{ 384 };
     const int INPUT_C{ 3 };
     const int CLASS_COUNT{ 80 };
     const int precision_mode{ 16 }; // fp32 mode : 32, fp16 mode : 16
     int gpu_device{ 0 };            // gpu device index (default = 0)
     bool serialize{ false };        // force serialize flag (IF true, recreate the engine file unconditionally)
-    std::string engine_file_name{ "dfine_s_obj2coco" };  // engine file name (engine file will be generated uisng this name)
+    std::string engine_file_name{ "rf_detr_nano" };  // engine file name (engine file will be generated uisng this name)
     std::filesystem::path engine_dir_path = CUR_DIR / "engine" ;// engine directory path (engine file will be generated in this location)
-    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/D-FINE/onnx/dfine_s_obj2coco_640x640_sim.onnx" ; // weight file path
+    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/RF-DETR/onnx/rf_detr_nano_384x384_new_ln_sim.onnx" ; // weight file path
 
-    detr_opti_trt dfine_trt = detr_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
+    detr_opti_trt rf_detr_trt = detr_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
 
     // 2) prepare input data
     std::filesystem::path image_dir_path = CUR_DIR / "data" ; // image file directory path
@@ -42,7 +42,8 @@ void dfine_demo()
     int OUTPUT_SIZE = (6 * 300);
     std::vector<float> inputs(BATCH_SIZE * (INPUT_SIZE + 2 * 2)); // [BATCH_SIZE, input(640, 640, 3), ori_size(2(int64_t))]
     std::vector<float> outputs(BATCH_SIZE * OUTPUT_SIZE);   // [BATCH_SIZE, (boxes[x,y,w,h], scores, labels) * 300]
-
+    std::vector<float> mean = {0.485f, 0.456f, 0.406f};
+    std::vector<float> std  = {0.229f, 0.224f, 0.225f};
     for (int i = 0; i < static_cast<int>(ceil(static_cast<float>(num_test_imgs) / BATCH_SIZE)); i++) // batch unit loop
     {
         // load image
@@ -56,14 +57,14 @@ void dfine_demo()
                 std::cerr << "[ERROR] Data load error (Check image path)" << std::endl;
             }
             // preprocess input images
-            pre_proc_detr(inputs, ori_img, b_idx, INPUT_SIZE, INPUT_H, INPUT_W);
+            pre_proc_rf_detr(inputs, ori_img, b_idx, INPUT_SIZE, INPUT_H, INPUT_W, mean, std);
             std::vector<int64_t> ori_size{static_cast<int64_t>(ori_img.cols), static_cast<int64_t>(ori_img.rows)};
             memcpy(inputs.data() + INPUT_SIZE + b_idx * (INPUT_SIZE + 2), ori_size.data(), 2 * sizeof(int64_t)); 
         }
 
-        dfine_trt.input_data(inputs.data());
-        dfine_trt.run_model();
-        dfine_trt.output_data(outputs.data());
+        rf_detr_trt.input_data(inputs.data());
+        rf_detr_trt.run_model();
+        rf_detr_trt.output_data(outputs.data());
 
         // draw results
         for (int b_idx = 0; b_idx < BATCH_SIZE; b_idx++)
@@ -74,7 +75,7 @@ void dfine_demo()
             std::cout << img_name << " H : "<< img.rows<< ", W : " << img.cols << std::endl;
             float conf_thre = 0.5;
             float* detection_ptr = outputs.data() + b_idx * OUTPUT_SIZE;
-            draw_bbox_text_detr(detection_ptr, img, conf_thre, img_name, save_dir_path, COLOR_TABLE, COCO_LABELS);
+            draw_bbox_text_rf_detr(detection_ptr, img, conf_thre, img_name, save_dir_path, COLOR_TABLE, COCO_LABELS_RFDETR);
 
             // show
             show_image(img, engine_file_name);

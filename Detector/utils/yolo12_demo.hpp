@@ -1,9 +1,9 @@
-#include "detr_opti_trt.hpp"
+#include "yolo_opti_trt.hpp"
 #include "utils.hpp"
 #include <chrono>
 #include <cmath>
 
-void dfine_demo()
+void yolo12_demo()
 {
     std::filesystem::path CUR_DIR = std::filesystem::current_path();
     std::cout << "Current path: " << CUR_DIR << std::endl;
@@ -20,11 +20,11 @@ void dfine_demo()
     const int precision_mode{ 16 }; // fp32 mode : 32, fp16 mode : 16
     int gpu_device{ 0 };            // gpu device index (default = 0)
     bool serialize{ false };        // force serialize flag (IF true, recreate the engine file unconditionally)
-    std::string engine_file_name{ "dfine_s_obj2coco" };  // engine file name (engine file will be generated uisng this name)
+    std::string engine_file_name{ "yolo12n" };  // engine file name (engine file will be generated uisng this name)
     std::filesystem::path engine_dir_path = CUR_DIR / "engine" ;// engine directory path (engine file will be generated in this location)
-    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/D-FINE/onnx/dfine_s_obj2coco_640x640_sim.onnx" ; // weight file path
+    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/Yolo12/onnx/yolo12n_640x640_sim_w_nms.onnx" ; // weight file path
 
-    detr_opti_trt dfine_trt = detr_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
+    yolo_opti_trt yolo12_trt = yolo_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
 
     // 2) prepare input data
     std::filesystem::path image_dir_path = CUR_DIR / "data" ; // image file directory path
@@ -38,10 +38,13 @@ void dfine_demo()
 
     // 3) Inference results check
     std::vector<cv::Mat> imgs; // temporary image save for visualization
+    std::vector<float> ratios; // temporary ratios
+    std::vector<float> pad_tops; // temporary ratios
+    std::vector<float> pad_lefts; // temporary ratios
     int INPUT_SIZE = INPUT_H * INPUT_W * INPUT_C;
-    int OUTPUT_SIZE = (6 * 300);
-    std::vector<float> inputs(BATCH_SIZE * (INPUT_SIZE + 2 * 2)); // [BATCH_SIZE, input(640, 640, 3), ori_size(2(int64_t))]
-    std::vector<float> outputs(BATCH_SIZE * OUTPUT_SIZE);   // [BATCH_SIZE, (boxes[x,y,w,h], scores, labels) * 300]
+    int OUTPUT_SIZE = (1 + 6 * 300);
+    std::vector<float> inputs(BATCH_SIZE * INPUT_SIZE);     // [BATCH_SIZE, 640, 640, 3]
+    std::vector<float> outputs(BATCH_SIZE * OUTPUT_SIZE);   // [BATCH_SIZE, (the number of detection,  {bbox[x,y,w,h], score, cls_id} * 300)]
 
     for (int i = 0; i < static_cast<int>(ceil(static_cast<float>(num_test_imgs) / BATCH_SIZE)); i++) // batch unit loop
     {
@@ -56,25 +59,28 @@ void dfine_demo()
                 std::cerr << "[ERROR] Data load error (Check image path)" << std::endl;
             }
             // preprocess input images
-            pre_proc_detr(inputs, ori_img, b_idx, INPUT_SIZE, INPUT_H, INPUT_W);
-            std::vector<int64_t> ori_size{static_cast<int64_t>(ori_img.cols), static_cast<int64_t>(ori_img.rows)};
-            memcpy(inputs.data() + INPUT_SIZE + b_idx * (INPUT_SIZE + 2), ori_size.data(), 2 * sizeof(int64_t)); 
+            float ratio = std::min((float)INPUT_W / (ori_img.cols), (float)INPUT_H / (ori_img.rows));
+            ratios.push_back(ratio);
+            pre_proc_yolo(inputs, ori_img, ratio, pad_tops, pad_lefts, b_idx, INPUT_SIZE, INPUT_H, INPUT_W);
         }
 
-        dfine_trt.input_data(inputs.data());
-        dfine_trt.run_model();
-        dfine_trt.output_data(outputs.data());
+        yolo12_trt.input_data(inputs.data());
+        yolo12_trt.run_model();
+        yolo12_trt.output_data(outputs.data());
 
         // draw results
         for (int b_idx = 0; b_idx < BATCH_SIZE; b_idx++)
         {
+            float* detection_ptr = outputs.data() + b_idx * OUTPUT_SIZE + 1;
+            int num_dets = static_cast<int>(outputs[b_idx * OUTPUT_SIZE + 0]);  // number of detections
             int imd_idx = (i * BATCH_SIZE + b_idx < num_test_imgs) ? i * BATCH_SIZE + b_idx : num_test_imgs - 1;
             cv::Mat img = imgs[imd_idx];
+            float ratio = ratios[imd_idx];
+            int pad_top = pad_tops[imd_idx];
+            int pad_left = pad_lefts[imd_idx];
             std::string img_name = std::filesystem::path(image_file_names[imd_idx]).stem().string();
-            std::cout << img_name << " H : "<< img.rows<< ", W : " << img.cols << std::endl;
             float conf_thre = 0.5;
-            float* detection_ptr = outputs.data() + b_idx * OUTPUT_SIZE;
-            draw_bbox_text_detr(detection_ptr, img, conf_thre, img_name, save_dir_path, COLOR_TABLE, COCO_LABELS);
+            draw_bbox_text_yolo(detection_ptr, num_dets, img, ratio, pad_top, pad_left, conf_thre, img_name, save_dir_path, COLOR_TABLE, COCO_LABELS);
 
             // show
             show_image(img, engine_file_name);
@@ -90,4 +96,5 @@ void dfine_demo()
         }
         std::cout << "==========================================================================" << std::endl;
     }
+
 }

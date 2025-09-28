@@ -3,7 +3,7 @@
 #include <chrono>
 #include <cmath>
 
-void dfine_demo()
+void deim_demo()
 {
     std::filesystem::path CUR_DIR = std::filesystem::current_path();
     std::cout << "Current path: " << CUR_DIR << std::endl;
@@ -20,9 +20,9 @@ void dfine_demo()
     const int precision_mode{ 16 }; // fp32 mode : 32, fp16 mode : 16
     int gpu_device{ 0 };            // gpu device index (default = 0)
     bool serialize{ false };        // force serialize flag (IF true, recreate the engine file unconditionally)
-    std::string engine_file_name{ "dfine_s_obj2coco" };  // engine file name (engine file will be generated uisng this name)
+    std::string engine_file_name{ "deim_rtdetrv2_r18vd" };  // engine file name (engine file will be generated uisng this name)
     std::filesystem::path engine_dir_path = CUR_DIR / "engine" ;// engine directory path (engine file will be generated in this location)
-    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/D-FINE/onnx/dfine_s_obj2coco_640x640_sim.onnx" ; // weight file path
+    std::filesystem::path weight_file_path = CUR_DIR / "../ONNX_Generator/DEIM/onnx/deim_rtdetrv2_r18vd_640x640_sim.onnx" ; // weight file path
 
     detr_opti_trt dfine_trt = detr_opti_trt(BATCH_SIZE, INPUT_H, INPUT_W, INPUT_C, CLASS_COUNT, precision_mode, serialize, gpu_device, engine_dir_path.string(), engine_file_name, weight_file_path.string());
 
