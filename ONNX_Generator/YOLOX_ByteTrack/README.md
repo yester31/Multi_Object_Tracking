@@ -26,7 +26,7 @@
 2. download pretrained checkpoints.
     ```
     mkdir -p pretrained
-    gdown --fuzzy https://drive.google.com/file/d/1P4mY0Yyd3PPTybgZkjMYhFri88nTmJX5/view?usp=sharing -O pretrained/
+    gdown --fuzzy https://drive.google.com/file/d/1uSmhXzyV1Zvb4TJJCzpsZOIcw7CCJLxj/view?usp=sharing -O pretrained/
     ```
     
 3. . generate onnx file

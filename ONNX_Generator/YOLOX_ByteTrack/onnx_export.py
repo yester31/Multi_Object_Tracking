@@ -128,14 +128,13 @@ def main():
     save_path = os.path.join(CUR_DIR, 'onnx')
     os.makedirs(save_path, exist_ok=True)
 
-    ckpt_file = f"{CUR_DIR}/ByteTrack/pretrained/bytetrack_x_mot17.pth.tar"
-    exp_file = f"{CUR_DIR}/ByteTrack/exps/example/mot/yolox_x_mix_det.py"
+    ckpt_file = f"{CUR_DIR}/ByteTrack/pretrained/bytetrack_s_mot17.pth.tar"
+    exp_file = f"{CUR_DIR}/ByteTrack/exps/example/mot/yolox_s_mix_det.py"
     model = YOLOX_ByteTrack(None, ckpt_file, exp_file, class_count=1)
     model.to(DEVICE).eval()
-    model_name = "bytetrack_x_mot17"
 
     input_h, input_w = model.test_size
-
+    model_name = "bytetrack_s_mot17"
     onnx_sim = True # True or False
     model_name = f"{model_name}_{input_h}x{input_w}"
     export_model_path = os.path.join(save_path, f'{model_name}.onnx')

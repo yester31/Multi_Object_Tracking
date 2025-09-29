@@ -211,6 +211,69 @@ void pre_proc_yolox(
 };
 
 
+// preprocess for yolox bytetrack
+/*
+    INPUT  = BGR[NHWC](0, 255)
+    OUTPUT = RGB[NCHW](0.f,1.f)
+    This equation include 6 steps
+    1. resize
+    2. padding (right, bottom) with (114, 114, 114)
+    3. convert to float32 and scale 0~1
+    4. BGR -> RGB
+    5. Shuffle form HWC to CHW
+    6. Normalize: (x - mean) / std
+*/
+void pre_proc_yolox_bt(    
+    std::vector<float> &output,     // output float data
+    cv::Mat &ori_img,               // input image
+    float &ratio,                   // ratio
+    int b_idx, int INPUT_SIZE, int INPUT_H, int INPUT_W,
+    const std::vector<float>& mean,  // mean values (size 3)
+    const std::vector<float>& std    // std values (size 3)
+){
+    // 1. resize with ratio
+    int unpad_w = static_cast<int>(ratio * ori_img.cols);
+    int unpad_h = static_cast<int>(ratio * ori_img.rows);
+
+    cv::Mat resized_img;
+    if (ori_img.cols != unpad_w || ori_img.rows != unpad_h) {
+        cv::resize(ori_img, resized_img, cv::Size(unpad_w, unpad_h), 0, 0, cv::INTER_LINEAR);
+    } else {
+        resized_img = ori_img;
+    }
+
+    // 2. pad with 114
+    int pad_right  = INPUT_W - resized_img.cols;
+    int pad_bottom = INPUT_H - resized_img.rows;
+    cv::Mat padded_img;
+    cv::copyMakeBorder(resized_img, padded_img, 0, pad_bottom, 0, pad_right,
+                       cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
+
+    // 3. convert to float32 and scale 0~1
+    cv::Mat float_img;
+    padded_img.convertTo(float_img, CV_32FC3, 1.0 / 255.0);
+
+    // 4. BGR -> RGB
+    cv::cvtColor(float_img, float_img, cv::COLOR_BGR2RGB);
+
+    // 5. HWC -> CHW directly into output
+    std::vector<cv::Mat> chw(3);
+    for (int c = 0; c < 3; c++) {
+        chw[c] = cv::Mat(INPUT_H, INPUT_W, CV_32F,
+                         output.data() + b_idx * INPUT_SIZE + c * INPUT_H * INPUT_W);
+    }
+    cv::split(float_img, chw);
+
+    // 6. Normalize: (x - mean) / std
+    for (int c = 0; c < 3; c++) {
+        float* ptr = output.data() + b_idx * INPUT_SIZE + c * INPUT_H * INPUT_W;
+        int channel_size = INPUT_H * INPUT_W;
+        for (int i = 0; i < channel_size; i++) {
+            ptr[i] = (ptr[i] - mean[c]) / std[c];
+        }
+    }
+}
+
 // preprocess for dfine, deim, rt_detr
 /*
     INPUT  = BGR[NHWC](0, 255)
@@ -303,10 +366,11 @@ void pre_proc_rf_detr(
     cv::Mat resized_img;
     cv::resize(ori_img, resized_img, cv::Size(INPUT_W, INPUT_H), 0, 0, cv::INTER_LINEAR);
 
-    // 2. Convert to float and scale 0~1, also convert BGR->RGB
+    // 2. Convert to float and scale 0~1
     cv::Mat float_img;
     resized_img.convertTo(float_img, CV_32F, 1.0 / 255.0);  // scale
 
+    // 2. Convert BGR->RGB
     cv::cvtColor(float_img, float_img, cv::COLOR_BGR2RGB);
 
     // 3. HWC -> CHW
