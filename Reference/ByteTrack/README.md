@@ -46,3 +46,7 @@
     ```
     python yolox_x_track.py
     ```
+
+- [ByteTrack: Multi-Object Tracking by Associating Every Detection Box](https://arxiv.org/pdf/2110.06864)
+- [ByteTrack official GitHub](https://github.com/FoundationVision/ByteTrack)
+---
