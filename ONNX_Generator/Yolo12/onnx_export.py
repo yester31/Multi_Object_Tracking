@@ -153,8 +153,8 @@ def main():
         simplify_onnx(export_model_path, export_model_sim_path)
 
     max_output_boxes = 300
-    iou_threshold = 0.7
-    score_threshold = 0.01
+    iou_threshold = 0.5
+    score_threshold = 0.25
     yolo_insert_nms(
         path=export_model_sim_path,
         score_threshold=score_threshold,

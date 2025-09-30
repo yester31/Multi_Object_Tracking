@@ -53,7 +53,7 @@ def simplify_onnx(export_model_path, export_model_sim_path):
     checker_onnx(export_model_sim_path)
 
 def yolo_insert_nms(
-    path, score_threshold=0.01, iou_threshold=0.7, max_output_boxes=300):
+    path, score_threshold=0.01, iou_threshold=0.7, max_output_boxes=300, bytetrack=True):
     """
     http://www.xavierdupre.fr/app/onnxcustom/helpsphinx/api/onnxops/onnx__EfficientNMS_TRT.html
     https://huggingface.co/spaces/muttalib1326/Punjabi_Character_Detection/blob/3dd1e17054c64e5f6b2254278f96cfa2bf418cd4/utils/add_nms.py
@@ -95,6 +95,8 @@ def yolo_insert_nms(
 
     filename = os.path.splitext(os.path.basename(path))[0]
     export_model_w_nms_path = f"{CUR_DIR}/onnx/{filename}_w_nms.onnx"
+    if bytetrack:
+        export_model_w_nms_path = f"{CUR_DIR}/onnx/{filename}_bytetrack_w_nms.onnx"
     onnx.save(onnx_graphsurgeon.export_onnx(graph), export_model_w_nms_path)
 
 class YOLOX_ByteTrack(torch.nn.Module):
@@ -135,7 +137,6 @@ def main():
 
     input_h, input_w = model.test_size
     model_name = "bytetrack_s_mot17"
-    onnx_sim = True # True or False
     model_name = f"{model_name}_{input_h}x{input_w}"
     export_model_path = os.path.join(save_path, f'{model_name}.onnx')
     print('[MDET] Export the model to onnx format')
@@ -158,18 +159,24 @@ def main():
     print("[MDET] Validate exported onnx model")
     checker_onnx(export_model_path)
 
-    if onnx_sim :
-        export_model_sim_path = os.path.join(save_path, f'{model_name}_sim.onnx')
-        simplify_onnx(export_model_path, export_model_sim_path)
 
+    export_model_sim_path = os.path.join(save_path, f'{model_name}_sim.onnx')
+    simplify_onnx(export_model_path, export_model_sim_path)
+
+    bytetrack = True # True or False
     max_output_boxes = 300
-    iou_threshold = 0.45
+    iou_threshold = 0.5
     score_threshold = 0.25
+    if bytetrack :
+        iou_threshold = 0.7 
+        score_threshold = 0.001
+
     yolo_insert_nms(
         path=export_model_sim_path,
         score_threshold=score_threshold,
         iou_threshold=iou_threshold,
         max_output_boxes=max_output_boxes,
+        bytetrack=bytetrack
     )
 
 if __name__ == '__main__':
