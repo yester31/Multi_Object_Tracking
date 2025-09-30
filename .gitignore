@@ -8,7 +8,8 @@ backup/
 *.engine
 .cache
 demo.mp4
-
+run_detecion_demo
+run_tracking_demo
 # Prerequisites
 *.d
 

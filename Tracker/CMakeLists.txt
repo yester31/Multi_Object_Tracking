@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(run_bytetrack_demo)
+project(run_tracking_demo)
 
 # Use C++ 17 standard
 set(CMAKE_CXX_STANDARD 17)

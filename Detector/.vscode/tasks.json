@@ -22,7 +22,7 @@
                 "${file}",
                 "${workspaceFolder}/opti_trt/src/**",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}",
+                "${fileDirname}/run_detecion_demo",
                 // CUDA & cuDNN
                 "-lcudart",
                 //"-lcuda",

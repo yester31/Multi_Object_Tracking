@@ -28,7 +28,7 @@
                 "${workspaceFolder}/bytetrack/src/**",
                 "${workspaceFolder}/ocsort/src/**",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}",
+                "${fileDirname}/run_tracking_demo",
                 // CUDA & cuDNN
                 "-lcudart",
                 //"-lcuda",
