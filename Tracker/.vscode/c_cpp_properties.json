@@ -13,6 +13,8 @@
                 "${workspaceFolder}/../Detector/opti_trt/src",
                 "${workspaceFolder}/bytetrack/include",
                 "${workspaceFolder}/bytetrack/src",
+                "${workspaceFolder}/ocsort/include",
+                "${workspaceFolder}/ocsort/src",
                 "${workspaceFolder}/demos"
 
             ],
