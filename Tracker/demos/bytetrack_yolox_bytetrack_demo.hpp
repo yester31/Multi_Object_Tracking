@@ -46,7 +46,7 @@ void bytetrack_yolox_bytetrack_demo() {
 
     std::filesystem::path save_dir_path = CUR_DIR / "results" ; // save file directory path
     gen_dir(save_dir_path.string());
-    std::filesystem::path save_file_path = save_dir_path / "bytetrack_yolox_bytetrack_demo.mp4" ;
+    std::filesystem::path save_file_path = save_dir_path / "bytetrack_s_mot17_608x1088_sim_bytetrack_w_nms.mp4" ;
     VideoWriter writer(save_file_path.string(), VideoWriter::fourcc('m', 'p', '4', 'v'), fps, Size(img_w, img_h));
 
     cv::Mat img;
@@ -80,7 +80,7 @@ void bytetrack_yolox_bytetrack_demo() {
         int label;
         int num_dets = static_cast<int>(outputs[0]);  // number of detections
         float* detection_ptr = outputs.data() + 1;
-        float conf_thre = 0.5;
+        float conf_thre = 0.45;
         objects.resize(num_dets);
         for (int d_idx = 0; d_idx < num_dets; d_idx++)
         {   
@@ -133,7 +133,7 @@ void bytetrack_yolox_bytetrack_demo() {
             static_cast<int>(output_stracks.size())), Point(0, 30), 0, 0.6, Scalar(0, 0, 255), 2, LINE_AA);
         writer.write(img);
 
-        cv::imshow(engine_file_name, img);
+        cv::imshow(save_file_path, img);
         char c = waitKey(1);
         if (c > 0)
         {
