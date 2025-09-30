@@ -1,5 +1,5 @@
-# Multi_Object_Tracking
-- Bot-SORT
+# BoT-SORT
+
 
 1. set up a virtual environment.
     ```

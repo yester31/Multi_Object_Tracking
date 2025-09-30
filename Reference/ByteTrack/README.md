@@ -1,4 +1,4 @@
-# Multi_Object_Tracking
+# ByteTrack
 
 
 1. set up a virtual environment.
