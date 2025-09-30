@@ -28,12 +28,14 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/../Detector/opti_trt/include
     ${PROJECT_SOURCE_DIR}/../Detector/utils
     ${PROJECT_SOURCE_DIR}/bytetrack/include
+    ${PROJECT_SOURCE_DIR}/ocsort/include
     ${PROJECT_SOURCE_DIR}/demos
     )
 
 # Project source files
 file(GLOB OPTI_SOURCES ${PROJECT_SOURCE_DIR}/../Detector/opti_trt/src/*.cpp)
 file(GLOB BYTETRACK_SOURCES ${PROJECT_SOURCE_DIR}/bytetrack/src/*.cpp)
+file(GLOB BYTETRACK_SOURCES ${PROJECT_SOURCE_DIR}/ocsort/src/*.cpp)
 
 add_executable(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/main.cpp
