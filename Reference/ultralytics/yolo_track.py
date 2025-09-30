@@ -21,7 +21,7 @@ def main():
     model = YOLO(checkpoint_path)
 
     # Open the video file
-    video_path = f"{CUR_DIR}/../../data/video/video1.mp4" # video1 or palace
+    video_path = f"{CUR_DIR}/../../data/video/palace.mp4" # video1 or palace
     filename = os.path.splitext(os.path.basename(video_path))[0]
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
