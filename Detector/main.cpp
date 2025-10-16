@@ -8,11 +8,13 @@
 #include "rt_detr_demo.hpp"
 #include "rf_detr_demo.hpp"
 
+#include "yolox_bytetrack_video_demo.hpp"
+#include "dfine_video_demo.hpp"
 
 int main()
 {
     //yolox_demo();
-    yolox_bytetrack_demo();
+    //yolox_bytetrack_demo();
     //yolo11_demo();
     //yolo12_demo();
 
@@ -20,6 +22,9 @@ int main()
     //deim_demo();
     //rt_detr_demo();
     //rf_detr_demo();
+    
+    yolox_bytetrack_video_demo();
+    dfine_video_demo();
 
     return 0;
 }

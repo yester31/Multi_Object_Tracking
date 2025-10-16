@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(run_detecion_demo)
+set(CMAKE_BUILD_TYPE Release)
 
 # Use C++ 17 standard
 set(CMAKE_CXX_STANDARD 17)

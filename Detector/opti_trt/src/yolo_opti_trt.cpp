@@ -217,10 +217,10 @@ void yolo_opti_trt::output_data(void* outputs)
             ((float*)outputs)[output_offset + 5] = static_cast<float>(output_post3[class_offset]); // class id
         }
     }
-    output_post0.clear();
-    output_post1.clear();
-    output_post2.clear();
-    output_post3.clear();
+    //output_post0.clear();
+    //output_post1.clear();
+    //output_post2.clear();
+    //output_post3.clear();
 }
 // Creat the engine using onnx.
 void yolo_opti_trt::createEngineFromOnnx(std::unique_ptr<nvinfer1::IBuilder>& builder, std::unique_ptr<nvinfer1::IBuilderConfig>& config)

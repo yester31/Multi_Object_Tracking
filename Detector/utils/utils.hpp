@@ -6,6 +6,9 @@
 #include <iomanip> // std::fixed, std::setprecision
 #include <sstream> // std::ostringstream
 #include <map>
+#include <chrono>
+#include <cmath>
+#include <algorithm>
 
 std::vector<std::vector<int>> COLOR_TABLE = {
     {0,   114, 189},    {217,  83,  25},    {237, 176,  32},    {126,  47, 142},    {119, 172,  48},    { 77, 190, 238},
@@ -398,7 +401,6 @@ void draw_bbox_text_yolo(
     float conf_thre, const std::string &img_name, const std::string &save_dir_path, 
     const std::vector<std::vector<int>> &color_table, const std::vector<std::string> &class_names)
 {
-    int img_width = img.cols;
     int x, y, x1, y1, w, h, cls_id;
     float conf;
     for (int d_idx = 0; d_idx < num_dets; d_idx++)
@@ -416,7 +418,7 @@ void draw_bbox_text_yolo(
 
         // bbox
         cv::Rect rect(x, y, w, h);
-        auto color_type = COLOR_TABLE[cls_id % COLOR_TABLE.size()];
+        auto color_type = color_table[cls_id % color_table.size()];
         auto color = cv::Scalar(color_type[0], color_type[1], color_type[2]);
         rectangle(img, rect, color, 2, 8, 0);
 
@@ -429,7 +431,7 @@ void draw_bbox_text_yolo(
 
         // print to console 
         std::string consol_text = "[" + std::to_string(d_idx) + "] " + img_name + ", " + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(w) + ", " + std::to_string(h) + ", " +
-        std::to_string(cls_id) + ", " + std::to_string(conf) + ", " + COCO_LABELS[cls_id];
+        std::to_string(cls_id) + ", " + std::to_string(conf) + ", " + class_names[cls_id];
         std::cout << consol_text << std::endl;
     }
 }
@@ -439,9 +441,8 @@ void draw_bbox_text_yolox(
     int num_dets,
     cv::Mat &img, 
     float ratio, float conf_thre, const std::string &img_name, const std::string &save_dir_path, 
-    const std::vector<std::vector<int>> &color_table, const std::vector<std::string> &class_names)
+    const std::vector<std::vector<int>> &color_table, const std::vector<std::string> &class_names, bool consol_print=true, int* det_count = nullptr)
 {
-    int img_width = img.cols;
     int x, y, x1, y1, w, h, cls_id;
     float conf;
     for (int d_idx = 0; d_idx < num_dets; d_idx++)
@@ -459,7 +460,7 @@ void draw_bbox_text_yolox(
 
         // bbox
         cv::Rect rect(x, y, w, h);
-        auto color_type = COLOR_TABLE[cls_id % COLOR_TABLE.size()];
+        auto color_type = color_table[cls_id % color_table.size()];
         auto color = cv::Scalar(color_type[0], color_type[1], color_type[2]);
         rectangle(img, rect, color, 2, 8, 0);
 
@@ -471,20 +472,22 @@ void draw_bbox_text_yolox(
         cv::putText(img, text, cv::Point(x, y - 5), cv::FONT_HERSHEY_DUPLEX, 0.5, color, 1, 0);
 
         // print to console 
-        std::string consol_text = "[" + std::to_string(d_idx) + "] " + img_name + ", " + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(w) + ", " + std::to_string(h) + ", " +
-        std::to_string(cls_id) + ", " + std::to_string(conf) + ", " + class_names[cls_id];
-        std::cout << consol_text << std::endl;
+        if (consol_print){
+            std::string consol_text = "[" + std::to_string(d_idx) + "] " + img_name + ", " + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(w) + ", " + std::to_string(h) + ", " +
+            std::to_string(cls_id) + ", " + std::to_string(conf) + ", " + class_names[cls_id];
+            std::cout << consol_text << std::endl;
+        }
+        if(det_count != nullptr)
+            (*det_count)++;
     }
 }
-
 
 void draw_bbox_text_detr(
     float* detection_ptr,
     cv::Mat &img, 
     float conf_thre, const std::string &img_name, const std::string &save_dir_path, 
-    const std::vector<std::vector<int>> &color_table, const std::vector<std::string> &class_names)
+    const std::vector<std::vector<int>> &color_table, const std::vector<std::string> &class_names, bool consol_print=true, int* det_count = nullptr)
 {
-    int img_width = img.cols;
     int x, y, x1, y1, w, h, cls_id;
     float conf;
     for (int d_idx = 0; d_idx < 300; d_idx++)
@@ -502,7 +505,7 @@ void draw_bbox_text_detr(
 
         // bbox
         cv::Rect rect(x, y, w, h);
-        auto color_type = COLOR_TABLE[cls_id % COLOR_TABLE.size()];
+        auto color_type = color_table[cls_id % color_table.size()];
         auto color = cv::Scalar(color_type[0], color_type[1], color_type[2]);
         rectangle(img, rect, color, 2, 8, 0);
 
@@ -514,9 +517,14 @@ void draw_bbox_text_detr(
         cv::putText(img, text, cv::Point(x, y - 5), cv::FONT_HERSHEY_DUPLEX, 0.5, color, 1, 0);
 
         // print to console 
-        std::string consol_text = "[" + std::to_string(d_idx) + "] " + img_name + ", " + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(w) + ", " + std::to_string(h) + ", " +
-        std::to_string(cls_id) + ", " + std::to_string(conf) + ", " + class_names[cls_id];
-        std::cout << consol_text << std::endl;
+        if (consol_print){
+            std::string consol_text = "[" + std::to_string(d_idx) + "] " + img_name + ", " + std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(w) + ", " + std::to_string(h) + ", " +
+            std::to_string(cls_id) + ", " + std::to_string(conf) + ", " + class_names[cls_id];
+            std::cout << consol_text << std::endl;
+        }
+
+        if(det_count != nullptr)
+            (*det_count)++;
     }
 }
 
@@ -526,7 +534,6 @@ void draw_bbox_text_rf_detr(
     float conf_thre, const std::string &img_name, const std::string &save_dir_path, 
     const std::vector<std::vector<int>> &color_table, const std::map<int, std::string> &class_names)
 {
-    int img_width = img.cols;
     int x, y, x1, y1, w, h, cls_id, index;
     float conf;
     for (int d_idx = 0; d_idx < 300; d_idx++)
@@ -551,7 +558,7 @@ void draw_bbox_text_rf_detr(
 
         // bbox
         cv::Rect rect(x, y, w, h);
-        auto color_type = COLOR_TABLE[index % COLOR_TABLE.size()];
+        auto color_type = color_table[index % color_table.size()];
         auto color = cv::Scalar(color_type[0], color_type[1], color_type[2]);
         rectangle(img, rect, color, 2, 8, 0);
 
